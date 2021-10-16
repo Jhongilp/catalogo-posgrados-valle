@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.rawgit.com/Keyang/node-csvtojson/d41f44aa/browser/csvtojson.min.js"></script>
+    <title>Document</title>
+
+    <style>
+      body,
+      h1,
+      h2 {
+        margin: 0;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(20%, 300px) 1fr;
+        gap: 30px;
+        margin-top: 30px;
+      }
+      /* MENU */
+      .menu {
+        background-color: blueviolet;
+        width: 100%;
+      }
+
+      .menu > ul {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .menu > ul li {
+        display: flex;
+        width: 100%;
+        height: 35px;
+        align-items: center;
+        padding-left: 20px;
+      }
+
+      /*  */
+      .content {
+        display: flex;
+        height: calc(100vh - 200px);
+        overflow: auto;
+      }
+
+      .content-module {
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import {
+        html,
+        Component,
+        render,
+        createContext,
+        useContext,
+      } from "https://unpkg.com/htm/preact/standalone.module.js";
+
+      const MainContext = createContext({});
+
+      function Header() {
+        return html`
+          <header>
+            <h1>
+              OFERTA POSGRADOS PARA FORMACIÓN DOCENTE EN EL VALLE DEL CAUCA
+            </h1>
+          </header>
+        `;
+      }
+
+      function Menu() {
+        return html`
+          <div class="menu">
+            <ul>
+              <li>ÁREAS DE INTERÉS</li>
+              <li>UNIVERSIDADES</li>
+              <li>TIPO DE POSGRADOS</li>
+              <li>MODALIDAD</li>
+              <li>UNICACIÓN</li>
+            </ul>
+          </div>
+        `;
+      }
+
+      function ContentModule({ children, title }) {
+        return html`
+          <div class="content-module">
+            <h2>${title}</h2>
+            <div class="module-content">${children}</div>
+          </div>
+        `;
+      }
+
+      function UniversityList() {
+        const data = useContext(MainContext);
+        console.log("university list ctx: ", data);
+
+        return html`
+          <div class="university-list-wrapper">
+            <ul>
+              ${data.map((university) => {
+                return html` <li>${university["NOMBRE_INSTITUCIÓN"]}</li> `;
+              })}
+            </ul>
+          </div>
+        `;
+      }
+
+      class App extends Component {
+        state = {
+          data: [],
+        };
+        componentDidMount() {
+          const url =
+            "https://docs.google.com/spreadsheets/d/1wie8UTZ4KSs3h6nBrlpFWY4lhohcYa2X/export?format=csv";
+          fetch(url)
+            .then((res) => res.text())
+            .then((csvText) => csv().fromString(csvText))
+            .then((jsonData) => {
+              console.log(jsonData);
+              this.setState({ data: jsonData });
+            });
+        }
+
+        render() {
+          console.log("[render] state: ", this.state);
+          return html`
+            <${Header} />
+
+            <${MainContext.Provider} value=${this.state.data}>
+              <main>
+                <div><${Menu} /></div>
+                <div class="content">
+                  <${ContentModule} title="UNIVERSIDADES">
+                    <${UniversityList} />
+                  <//>
+                </div>
+              </main>
+            <//>
+          `;
+        }
+      }
+
+      render(html`<${App} />`, document.body);
+    </script>
+  </body>
+</html>
