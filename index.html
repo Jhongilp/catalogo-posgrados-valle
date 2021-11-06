@@ -13,6 +13,13 @@
       h2 {
         margin: 0;
       }
+
+      .main-wrapper {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+      }
+
       main {
         display: grid;
         grid-template-columns: minmax(20%, 300px) 1fr;
@@ -73,15 +80,16 @@
         `;
       }
 
-      function Menu() {
+      function Menu({ onSelect }) {
         return html`
           <div class="menu">
             <ul>
-              <li>ÁREAS DE INTERÉS</li>
-              <li>UNIVERSIDADES</li>
-              <li>TIPO DE POSGRADOS</li>
-              <li>MODALIDAD</li>
-              <li>UNICACIÓN</li>
+              <li data-menu-option="universidades" onClick=${onSelect}>
+                UNIVERSIDADES
+              </li>
+              <li data-menu-option="programas" onClick=${onSelect}>
+                PROGRAMAS
+              </li>
             </ul>
           </div>
         `;
@@ -99,6 +107,19 @@
       function UniversityList() {
         const data = useContext(MainContext);
         console.log("university list ctx: ", data);
+        const universitiesList = data.reduce((accum, university) => {
+          if (accum[university["CÓDIGO_INSTITUCIÓN"]]) {
+            accum[university["CÓDIGO_INSTITUCIÓN"]].programs += 1;
+          } else {
+            accum[university["CÓDIGO_INSTITUCIÓN"]] = {
+              programs: 1,
+              name: university["NOMBRE_INSTITUCIÓN"],
+            };
+          }
+          return accum;
+        }, {});
+        universitiesList;
+        console.log("university list GROUPBY: ", universitiesList);
 
         return html`
           <div class="university-list-wrapper">
@@ -111,9 +132,46 @@
         `;
       }
 
+      function ProgramList() {
+        const data = useContext(MainContext);
+        console.log(" [PROGRAMS] ctx: ", data);
+
+        return html`
+          <div class="university-list-wrapper">
+            <table class="programs-table">
+              <thead>
+                <tr>
+                  <th>Programa</th>
+                  <th>Universidad</th>
+                  <th>Nivel de formación</th>
+                  <th>Ciudad</th>
+                  <th>Modalidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map((programa) => {
+                  return html`
+                    <tr>
+                      <td>${programa["NOMBRE_DEL_PROGRAMA"]}</td>
+                      <td>${programa["NOMBRE_INSTITUCIÓN"]}</td>
+                      <td>${programa["NIVEL_DE_FORMACIÓN"]}</td>
+                      <td>${programa["MUNICIPIO_OFERTA_PROGRAMA"]}</td>
+                      <td>${programa["MODALIDAD"]}</td>
+                    </tr>
+                  `;
+                })}
+              </tbody>
+
+              <tbody></tbody>
+            </table>
+          </div>
+        `;
+      }
+
       class App extends Component {
         state = {
           data: [],
+          menuOption: "universidades",
         };
         componentDidMount() {
           const url =
@@ -127,21 +185,41 @@
             });
         }
 
-        render() {
-          console.log("[render] state: ", this.state);
-          return html`
-            <${Header} />
+        handleOnMenuSelect = (e) => {
+          console.log(
+            "[on menu select] e: ",
+            e?.currentTarget?.dataset?.menuOption
+          );
+          const { menuOption } = e?.currentTarget?.dataset ?? {};
+          if (menuOption) {
+            this.setState({ menuOption });
+          }
+        };
 
-            <${MainContext.Provider} value=${this.state.data}>
-              <main>
-                <div><${Menu} /></div>
-                <div class="content">
-                  <${ContentModule} title="UNIVERSIDADES">
-                    <${UniversityList} />
-                  <//>
-                </div>
-              </main>
-            <//>
+        render() {
+          // console.log("[render] state: ", this.state);
+          const { menuOption } = this.state;
+          return html`
+            <div class="main-wrapper">
+              <${Header} />
+
+              <${MainContext.Provider} value=${this.state.data}>
+                <main>
+                  <div><${Menu} onSelect=${this.handleOnMenuSelect} /></div>
+                  <div class="content">
+                    <${ContentModule}
+                      title=${menuOption === "universidades"
+                        ? "UNIVERSIDADES"
+                        : "PROGRAMAS"}
+                    >
+                      <${menuOption === "universidades"
+                        ? UniversityList
+                        : ProgramList} />
+                    <//>
+                  </div>
+                </main>
+              <//>
+            </div>
           `;
         }
       }
