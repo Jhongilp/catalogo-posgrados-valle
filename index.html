@@ -65,6 +65,7 @@
         Component,
         render,
         useState,
+        useEffect,
         createContext,
         useContext,
       } from "https://unpkg.com/htm/preact/standalone.module.js";
@@ -77,6 +78,21 @@
         maestria: "Maestría",
         doctorado: "Doctorado",
       };
+
+      function useFetchData() {
+        const [data, setData] = useState([]);
+        useEffect(() => {
+          const url =
+            "https://docs.google.com/spreadsheets/d/1wie8UTZ4KSs3h6nBrlpFWY4lhohcYa2X/export?format=csv";
+          fetch(url)
+            .then((res) => res.text())
+            .then((csvText) => csv().fromString(csvText))
+            .then((jsonData) => {
+              setData(jsonData);
+            });
+        }, []);
+        return data;
+      }
 
       function getUniversityListGroupByProgramType(data) {
         return data.reduce((accum, program) => {
@@ -151,7 +167,10 @@
         `;
       }
 
-      function UniversityListGroupByPrograms({ universityListSorted, onSelect }) {
+      function UniversityListGroupByPrograms({
+        universityListSorted,
+        onSelect,
+      }) {
         return html`
           <table class="programs-table">
             <thead>
@@ -167,9 +186,27 @@
                 return html`
                   <tr>
                     <td>${university.name}</td>
-                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.especializacion])}>${university.especializacion}</td>
-                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.maestria])}>${university.maestria}</td>
-                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.doctorado])}>${university.doctorado}</td>
+                    <td
+                      onClick=${() =>
+                        onSelect([
+                          university.name,
+                          NIVEL_FORMACION.especializacion,
+                        ])}
+                    >
+                      ${university.especializacion}
+                    </td>
+                    <td
+                      onClick=${() =>
+                        onSelect([university.name, NIVEL_FORMACION.maestria])}
+                    >
+                      ${university.maestria}
+                    </td>
+                    <td
+                      onClick=${() =>
+                        onSelect([university.name, NIVEL_FORMACION.doctorado])}
+                    >
+                      ${university.doctorado}
+                    </td>
                   </tr>
                 `;
               })}
@@ -193,8 +230,6 @@
           .sort((a, b) => b.programs - a.programs);
         console.log("university list SORTED: ", universityListSorted);
         console.log("university filter state: ", filters);
-
-        
 
         return html`
           <div class="university-list-wrapper">
@@ -274,56 +309,39 @@
         `;
       }
 
-      class App extends Component {
-        state = {
-          data: [],
-          menuOption: "universidades",
-        };
-        componentDidMount() {
-          const url =
-            "https://docs.google.com/spreadsheets/d/1wie8UTZ4KSs3h6nBrlpFWY4lhohcYa2X/export?format=csv";
-          fetch(url)
-            .then((res) => res.text())
-            .then((csvText) => csv().fromString(csvText))
-            .then((jsonData) => {
-              console.log(jsonData);
-              this.setState({ data: jsonData });
-            });
-        }
+      function App() {
+        const data = useFetchData();
+        const [menuOption, setMenuOption] = useState("universidades");
 
-        handleOnMenuSelect = (e) => {
+        const handleOnMenuSelect = (e) => {
           const { menuOption } = e?.currentTarget?.dataset ?? {};
           if (menuOption) {
-            this.setState({ menuOption });
+            setMenuOption(menuOption);
           }
         };
 
-        render() {
-          // console.log("[render] state: ", this.state);
-          const { menuOption } = this.state;
-          return html`
-            <div class="main-wrapper">
-              <${Header} />
+        return html`
+          <div class="main-wrapper">
+            <${Header} />
 
-              <${MainContext.Provider} value=${this.state.data}>
-                <main>
-                  <div><${Menu} onSelect=${this.handleOnMenuSelect} /></div>
-                  <div class="content">
-                    <${ContentModule}
-                      title=${menuOption === "universidades"
-                        ? "UNIVERSIDADES"
-                        : "PROGRAMAS"}
-                    >
-                      <${menuOption === "universidades"
-                        ? UniversityList
-                        : ProgramList} />
-                    <//>
-                  </div>
-                </main>
-              <//>
-            </div>
-          `;
-        }
+            <${MainContext.Provider} value=${data}>
+              <main>
+                <div><${Menu} onSelect=${handleOnMenuSelect} /></div>
+                <div class="content">
+                  <${ContentModule}
+                    title=${menuOption === "universidades"
+                      ? "UNIVERSIDADES"
+                      : "PROGRAMAS"}
+                  >
+                    <${menuOption === "universidades"
+                      ? UniversityList
+                      : ProgramList} />
+                  <//>
+                </div>
+              </main>
+            <//>
+          </div>
+        `;
       }
 
       render(html`<${App} />`, document.body);
