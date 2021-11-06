@@ -64,11 +64,58 @@
         html,
         Component,
         render,
+        useState,
         createContext,
         useContext,
       } from "https://unpkg.com/htm/preact/standalone.module.js";
 
       const MainContext = createContext({});
+
+      const NIVEL_FORMACION = {
+        todos: "Todos",
+        especializacion: "Especialización",
+        maestria: "Maestría",
+        doctorado: "Doctorado",
+      };
+
+      function getUniversityListGroupByProgramType(data) {
+        return data.reduce((accum, program) => {
+          if (accum[program["CÓDIGO_INSTITUCIÓN"]]) {
+            accum[program["CÓDIGO_INSTITUCIÓN"]].programs += 1;
+            if (
+              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.especializacion
+            ) {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
+            } else if (
+              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
+            ) {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
+            } else {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
+            }
+          } else {
+            accum[program["CÓDIGO_INSTITUCIÓN"]] = {
+              name: program["NOMBRE_INSTITUCIÓN"],
+              programs: 1,
+              especializacion: 0,
+              maestria: 0,
+              doctorado: 0,
+            };
+            if (
+              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.especializacion
+            ) {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
+            } else if (
+              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
+            ) {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
+            } else {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
+            }
+          }
+          return accum;
+        }, {});
+      }
 
       function Header() {
         return html`
@@ -104,40 +151,99 @@
         `;
       }
 
+      function UniversityListGroupByPrograms({ universityListSorted, onSelect }) {
+        return html`
+          <table class="programs-table">
+            <thead>
+              <tr>
+                <th>Universidad</th>
+                <th>Especialización</th>
+                <th>Maestría</th>
+                <th>Doctorado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${universityListSorted.map((university) => {
+                return html`
+                  <tr>
+                    <td>${university.name}</td>
+                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.especializacion])}>${university.especializacion}</td>
+                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.maestria])}>${university.maestria}</td>
+                    <td onClick=${() => onSelect([university.name, NIVEL_FORMACION.doctorado])}>${university.doctorado}</td>
+                  </tr>
+                `;
+              })}
+            </tbody>
+          </table>
+        `;
+      }
+
       function UniversityList() {
         const data = useContext(MainContext);
+        const [filters, setFilters] = useState([null, null]);
         console.log("university list ctx: ", data);
-        const universitiesList = data.reduce((accum, university) => {
-          if (accum[university["CÓDIGO_INSTITUCIÓN"]]) {
-            accum[university["CÓDIGO_INSTITUCIÓN"]].programs += 1;
-          } else {
-            accum[university["CÓDIGO_INSTITUCIÓN"]] = {
-              programs: 1,
-              name: university["NOMBRE_INSTITUCIÓN"],
-            };
-          }
-          return accum;
-        }, {});
-        universitiesList;
-        console.log("university list GROUPBY: ", universitiesList);
+        const program_types = Object.keys(NIVEL_FORMACION);
+        const universityListGroupByProgramType =
+          getUniversityListGroupByProgramType(data);
+
+        const universityListSorted = Object.keys(
+          universityListGroupByProgramType
+        )
+          .map((id) => universityListGroupByProgramType[id])
+          .sort((a, b) => b.programs - a.programs);
+        console.log("university list SORTED: ", universityListSorted);
+        console.log("university filter state: ", filters);
+
+        
 
         return html`
           <div class="university-list-wrapper">
-            <ul>
-              ${data.map((university) => {
-                return html` <li>${university["NOMBRE_INSTITUCIÓN"]}</li> `;
-              })}
-            </ul>
+            <div>
+              <${UniversityListGroupByPrograms}
+                universityListSorted=${universityListSorted}
+                onSelect=${setFilters}
+              />
+            </div>
           </div>
         `;
       }
 
       function ProgramList() {
         const data = useContext(MainContext);
+        const [type, setType] = useState(NIVEL_FORMACION.todos);
+
         console.log(" [PROGRAMS] ctx: ", data);
+
+        let filteredData = [...data];
+
+        if (type !== NIVEL_FORMACION.todos) {
+          filteredData = data.filter(
+            (program) => program["NIVEL_DE_FORMACIÓN"] === type
+          );
+        }
 
         return html`
           <div class="university-list-wrapper">
+            <div class="programs_filters-type">
+              <ul>
+                <li onClick=${() => setType(NIVEL_FORMACION.todos)}>Todos</li>
+                <li onClick=${() => setType(NIVEL_FORMACION.especializacion)}>
+                  Especialización
+                </li>
+                <li onClick=${() => setType(NIVEL_FORMACION.maestria)}>
+                  Mestría
+                </li>
+                <li onClick=${() => setType(NIVEL_FORMACION.doctorado)}>
+                  Doctorado
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>
+                ${type.toUpperCase()}:
+                <span>${filteredData.length} programas</span>
+              </h3>
+            </div>
             <table class="programs-table">
               <thead>
                 <tr>
@@ -149,7 +255,7 @@
                 </tr>
               </thead>
               <tbody>
-                ${data.map((programa) => {
+                ${filteredData.map((programa) => {
                   return html`
                     <tr>
                       <td>${programa["NOMBRE_DEL_PROGRAMA"]}</td>
@@ -186,10 +292,6 @@
         }
 
         handleOnMenuSelect = (e) => {
-          console.log(
-            "[on menu select] e: ",
-            e?.currentTarget?.dataset?.menuOption
-          );
           const { menuOption } = e?.currentTarget?.dataset ?? {};
           if (menuOption) {
             this.setState({ menuOption });
