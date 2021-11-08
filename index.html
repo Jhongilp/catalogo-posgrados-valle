@@ -5,6 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.rawgit.com/Keyang/node-csvtojson/d41f44aa/browser/csvtojson.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap"
+      rel="stylesheet"
+    />
     <title>Document</title>
 
     <style>
@@ -18,6 +24,7 @@
         display: flex;
         flex-direction: column;
         padding: 20px;
+        font-family: "Roboto", sans-serif;
       }
 
       main {
@@ -55,6 +62,32 @@
       }
 
       .content-module {
+      }
+
+      table {
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      thead {
+        height: 40px;
+      }
+
+      tr {
+        height: 30px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #9e9e9e;
+        padding: 0 4px;
+      }
+
+      .tb-programs_th {
+        width: 150px;
+      }
+      .tb-programs-td--counter {
+        text-align: center;
       }
     </style>
   </head>
@@ -176,9 +209,9 @@
             <thead>
               <tr>
                 <th>Universidad</th>
-                <th>Especialización</th>
-                <th>Maestría</th>
-                <th>Doctorado</th>
+                <th class="tb-programs_th">Especialización</th>
+                <th class="tb-programs_th">Maestría</th>
+                <th class="tb-programs_th">Doctorado</th>
               </tr>
             </thead>
             <tbody>
@@ -187,6 +220,7 @@
                   <tr>
                     <td>${university.name}</td>
                     <td
+                      class="tb-programs-td--counter"
                       onClick=${() =>
                         onSelect([
                           university.name,
@@ -196,12 +230,14 @@
                       ${university.especializacion}
                     </td>
                     <td
+                      class="tb-programs-td--counter"
                       onClick=${() =>
                         onSelect([university.name, NIVEL_FORMACION.maestria])}
                     >
                       ${university.maestria}
                     </td>
                     <td
+                      class="tb-programs-td--counter"
                       onClick=${() =>
                         onSelect([university.name, NIVEL_FORMACION.doctorado])}
                     >
