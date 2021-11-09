@@ -99,6 +99,7 @@
         render,
         useState,
         useEffect,
+        useRef,
         createContext,
         useContext,
       } from "https://unpkg.com/htm/preact/standalone.module.js";
@@ -128,42 +129,53 @@
       }
 
       function getUniversityListGroupByProgramType(data) {
-        return data.reduce((accum, program) => {
-          if (accum[program["CÓDIGO_INSTITUCIÓN"]]) {
-            accum[program["CÓDIGO_INSTITUCIÓN"]].programs += 1;
-            if (
-              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.especializacion
-            ) {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
-            } else if (
-              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
-            ) {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
+        const universityListGroupByProgramType = data.reduce(
+          (accum, program) => {
+            if (accum[program["CÓDIGO_INSTITUCIÓN"]]) {
+              accum[program["CÓDIGO_INSTITUCIÓN"]].programs += 1;
+              if (
+                program["NIVEL_DE_FORMACIÓN"] ===
+                NIVEL_FORMACION.especializacion
+              ) {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
+              } else if (
+                program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
+              ) {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
+              } else {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
+              }
             } else {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
+              accum[program["CÓDIGO_INSTITUCIÓN"]] = {
+                name: program["NOMBRE_INSTITUCIÓN"],
+                programs: 1,
+                especializacion: 0,
+                maestria: 0,
+                doctorado: 0,
+              };
+              if (
+                program["NIVEL_DE_FORMACIÓN"] ===
+                NIVEL_FORMACION.especializacion
+              ) {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
+              } else if (
+                program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
+              ) {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
+              } else {
+                accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
+              }
             }
-          } else {
-            accum[program["CÓDIGO_INSTITUCIÓN"]] = {
-              name: program["NOMBRE_INSTITUCIÓN"],
-              programs: 1,
-              especializacion: 0,
-              maestria: 0,
-              doctorado: 0,
-            };
-            if (
-              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.especializacion
-            ) {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].especializacion += 1;
-            } else if (
-              program["NIVEL_DE_FORMACIÓN"] === NIVEL_FORMACION.maestria
-            ) {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].maestria += 1;
-            } else {
-              accum[program["CÓDIGO_INSTITUCIÓN"]].doctorado += 1;
-            }
-          }
-          return accum;
-        }, {});
+            return accum;
+          },
+          {}
+        );
+        const universityListSorted = Object.keys(
+          universityListGroupByProgramType
+        )
+          .map((id) => universityListGroupByProgramType[id])
+          .sort((a, b) => b.programs - a.programs);
+        return universityListSorted;
       }
 
       function Header() {
@@ -252,27 +264,31 @@
       }
 
       function UniversityList() {
-        const data = useContext(MainContext);
-        const [filters, setFilters] = useState([null, null]);
+        const { data, setFilters, setMenuOption } = useContext(MainContext);
+
         console.log("university list ctx: ", data);
         const program_types = Object.keys(NIVEL_FORMACION);
         const universityListGroupByProgramType =
           getUniversityListGroupByProgramType(data);
 
-        const universityListSorted = Object.keys(
+        console.log(
+          "university list SORTED: ",
           universityListGroupByProgramType
-        )
-          .map((id) => universityListGroupByProgramType[id])
-          .sort((a, b) => b.programs - a.programs);
-        console.log("university list SORTED: ", universityListSorted);
-        console.log("university filter state: ", filters);
+        );
 
         return html`
           <div class="university-list-wrapper">
             <div>
               <${UniversityListGroupByPrograms}
-                universityListSorted=${universityListSorted}
-                onSelect=${setFilters}
+                universityListSorted=${universityListGroupByProgramType}
+                onSelect=${(filters) => {
+                  console.log("on select filters");
+                  setFilters((state) => ({
+                    university: filters[0],
+                    program_type: filters[1],
+                  }));
+                  setMenuOption("programas");
+                }}
               />
             </div>
           </div>
@@ -280,7 +296,7 @@
       }
 
       function ProgramList() {
-        const data = useContext(MainContext);
+        const { data } = useContext(MainContext);
         const [type, setType] = useState(NIVEL_FORMACION.todos);
 
         console.log(" [PROGRAMS] ctx: ", data);
@@ -293,9 +309,22 @@
           );
         }
 
+        const universityList = getUniversityListGroupByProgramType(data).map(
+          (u) => u.name
+        );
+        console.log("universityList UNIQUE NAMES: ", universityList);
         return html`
           <div class="university-list-wrapper">
             <div class="programs_filters-type">
+              <div class="u-selection-filter-wrapper">
+                <label for="u-select">Escoger universidad:</label>
+                <select name="universidades" id="u-select">
+                  <option value="">Todas las universidades</option>
+                  ${universityList.map(
+                    (name) => html`<option value=${name}>${name}</option>`
+                  )}
+                </select>
+              </div>
               <ul>
                 <li onClick=${() => setType(NIVEL_FORMACION.todos)}>Todos</li>
                 <li onClick=${() => setType(NIVEL_FORMACION.especializacion)}>
@@ -348,6 +377,13 @@
       function App() {
         const data = useFetchData();
         const [menuOption, setMenuOption] = useState("universidades");
+        const [filters, setFilters] = useState({
+          university: null,
+          program_type: null,
+          interest_area: null,
+          modalidad: null,
+          location: null,
+        });
 
         const handleOnMenuSelect = (e) => {
           const { menuOption } = e?.currentTarget?.dataset ?? {};
@@ -356,11 +392,18 @@
           }
         };
 
+        const store = {
+          data,
+          filters,
+          setFilters,
+          setMenuOption,
+        };
+        console.log("app filter state: ", filters);
         return html`
           <div class="main-wrapper">
             <${Header} />
 
-            <${MainContext.Provider} value=${data}>
+            <${MainContext.Provider} value=${store}>
               <main>
                 <div><${Menu} onSelect=${handleOnMenuSelect} /></div>
                 <div class="content">
