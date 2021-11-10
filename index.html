@@ -62,9 +62,11 @@
       }
 
       .content-module {
+        width: 100%;
       }
 
       table {
+        width: 100%;
         border-collapse: collapse;
         font-size: 14px;
       }
@@ -89,6 +91,33 @@
       .tb-programs-td--counter {
         text-align: center;
       }
+
+      .menu-program-type-level {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 40px;
+        padding: 0;
+        margin: 20px 0;
+      }
+      .menu-program-type-level li {
+        display: flex;
+        height: 35px;
+        align-items: center;
+        padding: 0 20px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+        text-transform: uppercase;
+      }
+      .menu-program-type-level li:hover {
+        background-color: #eee;
+      }
+
+      .menu-program-type-level li.selected {
+        font-weight: bold;
+        border-bottom: 2px solid black;
+      }
     </style>
   </head>
   <body>
@@ -111,6 +140,14 @@
         especializacion: "Especialización",
         maestria: "Maestría",
         doctorado: "Doctorado",
+      };
+
+      const initialFiltersState = {
+        university: null,
+        program_type: null,
+        interest_area: null,
+        modalidad: null,
+        location: null,
       };
 
       function useFetchData() {
@@ -263,6 +300,49 @@
         `;
       }
 
+      function MenuProgramTypeLevel() {
+        const { filters, setFilters } = useContext(MainContext);
+        const level = filters.program_type;
+        return html`
+          <div>
+            <ul class="menu-program-type-level">
+              <li
+                class=${!level ? "selected" : ""}
+                onClick=${() => setFilters({ program_type: null })}
+              >
+                Todos
+              </li>
+              <li
+                class=${level === NIVEL_FORMACION.especializacion
+                  ? "selected"
+                  : ""}
+                onClick=${() =>
+                  setFilters({
+                    program_type: NIVEL_FORMACION.especializacion,
+                  })}
+              >
+                Especialización
+              </li>
+              <li
+                class=${level === NIVEL_FORMACION.maestria ? "selected" : ""}
+                onClick=${() =>
+                  setFilters({ program_type: NIVEL_FORMACION.maestria })}
+              >
+                Mestría
+              </li>
+              <li
+                class=${level === NIVEL_FORMACION.doctorado ? "selected" : ""}
+                onClick=${() =>
+                  setFilters({ program_type: NIVEL_FORMACION.doctorado })}
+              >
+                Doctorado
+              </li>
+            </ul>
+            <div></div>
+          </div>
+        `;
+      }
+
       function UniversityList() {
         const { data, setFilters, setMenuOption } = useContext(MainContext);
 
@@ -271,10 +351,10 @@
         const universityListGroupByProgramType =
           getUniversityListGroupByProgramType(data);
 
-        console.log(
-          "university list SORTED: ",
-          universityListGroupByProgramType
-        );
+        // console.log(
+        //   "university list SORTED: ",
+        //   universityListGroupByProgramType
+        // );
 
         return html`
           <div class="university-list-wrapper">
@@ -282,11 +362,10 @@
               <${UniversityListGroupByPrograms}
                 universityListSorted=${universityListGroupByProgramType}
                 onSelect=${(filters) => {
-                  console.log("on select filters");
-                  setFilters((state) => ({
+                  setFilters({
                     university: filters[0],
                     program_type: filters[1],
-                  }));
+                  });
                   setMenuOption("programas");
                 }}
               />
@@ -296,23 +375,14 @@
       }
 
       function ProgramList() {
-        const { data } = useContext(MainContext);
-        const [type, setType] = useState(NIVEL_FORMACION.todos);
+        const { data, setFilters } = useContext(MainContext);
 
         console.log(" [PROGRAMS] ctx: ", data);
-
-        let filteredData = [...data];
-
-        if (type !== NIVEL_FORMACION.todos) {
-          filteredData = data.filter(
-            (program) => program["NIVEL_DE_FORMACIÓN"] === type
-          );
-        }
 
         const universityList = getUniversityListGroupByProgramType(data).map(
           (u) => u.name
         );
-        console.log("universityList UNIQUE NAMES: ", universityList);
+
         return html`
           <div class="university-list-wrapper">
             <div class="programs_filters-type">
@@ -325,23 +395,11 @@
                   )}
                 </select>
               </div>
-              <ul>
-                <li onClick=${() => setType(NIVEL_FORMACION.todos)}>Todos</li>
-                <li onClick=${() => setType(NIVEL_FORMACION.especializacion)}>
-                  Especialización
-                </li>
-                <li onClick=${() => setType(NIVEL_FORMACION.maestria)}>
-                  Mestría
-                </li>
-                <li onClick=${() => setType(NIVEL_FORMACION.doctorado)}>
-                  Doctorado
-                </li>
-              </ul>
+              <${MenuProgramTypeLevel} />
             </div>
             <div>
               <h3>
-                ${type.toUpperCase()}:
-                <span>${filteredData.length} programas</span>
+                <span>${data.length} programas</span>
               </h3>
             </div>
             <table class="programs-table">
@@ -355,7 +413,7 @@
                 </tr>
               </thead>
               <tbody>
-                ${filteredData.map((programa) => {
+                ${data.map((programa) => {
                   return html`
                     <tr>
                       <td>${programa["NOMBRE_DEL_PROGRAMA"]}</td>
@@ -377,23 +435,48 @@
       function App() {
         const data = useFetchData();
         const [menuOption, setMenuOption] = useState("universidades");
-        const [filters, setFilters] = useState({
-          university: null,
-          program_type: null,
-          interest_area: null,
-          modalidad: null,
-          location: null,
-        });
+        const [filters, setFilters] = useState({ ...initialFiltersState });
 
         const handleOnMenuSelect = (e) => {
           const { menuOption } = e?.currentTarget?.dataset ?? {};
           if (menuOption) {
             setMenuOption(menuOption);
+            if (menuOption === "universidades") {
+              setFilters({ ...initialFiltersState });
+            }
           }
         };
 
+        const filterType = {
+          university: (program, query) =>
+            program["NOMBRE_INSTITUCIÓN"] === query,
+          program_type: (program, query) =>
+            program["NIVEL_DE_FORMACIÓN"] === query,
+          interest_area: (program, query) =>
+            program["CÓDIGO_INSTITUCIÓN"] === query,
+          modalidad: (program, query) =>
+            program["CÓDIGO_INSTITUCIÓN"] === query,
+          location: (program, query) => program["CÓDIGO_INSTITUCIÓN"] === query,
+        };
+
+        const filterData = (data, filters) => {
+          let filteredData = [...data];
+          Object.keys(filters).forEach((filter) => {
+            const query = filters[filter];
+            if (query) {
+              filteredData = filteredData.filter((program) =>
+                filterType[filter](program, query)
+              );
+            }
+          });
+          return filteredData;
+        };
+
+        const filteredData = filterData(data, filters);
+        console.log("applied filters: ", filteredData);
+
         const store = {
-          data,
+          data: filteredData,
           filters,
           setFilters,
           setMenuOption,
