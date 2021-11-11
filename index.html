@@ -37,6 +37,13 @@
         margin-top: 30px;
       }
       /* MENU */
+
+      .menu-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 20 px;
+      }
+
       .menu {
         /* background-color: blueviolet; */
         width: 100%;
@@ -129,6 +136,44 @@
         font-weight: bold;
         border-bottom: 2px solid black;
       }
+
+      .additional-filters {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .additional-filter-box {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 30px 1fr;
+        min-height: 50px;
+        margin-top: 20px;
+        padding: 10px;
+      }
+
+      .tags-title {
+        font-weight: bold;
+      }
+
+      .filter-tags-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        height: fit-content;
+        gap: 5px;
+      }
+
+      .filter-tag {
+        display: flex;
+        align-items: center;
+        background-color: #00bcd4;
+        width: fit-content;
+        /* height: 20px; */
+        border-radius: 3px;
+        padding: 0 10px;
+        color: white;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -174,6 +219,27 @@
             });
         }, []);
         return data;
+      }
+
+      function getUniqueArrayValues(filteredData, property) {
+        const results = filteredData.reduce((accum, program) => {
+          accum[program[property]] = true;
+          return accum;
+        }, {});
+        return Object.keys(results);
+      }
+
+      function getAreaOfInterest(filteredData) {
+        return getUniqueArrayValues(
+          filteredData,
+          "NÚCLEO_BÁSICO_DEL_CONOCIMIENTO"
+        );
+      }
+      function getModeTagValues(filteredData) {
+        return getUniqueArrayValues(filteredData, "MODALIDAD");
+      }
+      function getLocationTagValues(filteredData) {
+        return getUniqueArrayValues(filteredData, "MUNICIPIO_OFERTA_PROGRAMA");
       }
 
       function getUniversityListGroupByProgramType(data) {
@@ -256,6 +322,45 @@
                 PROGRAMAS
               </li>
             </ul>
+          </div>
+        `;
+      }
+
+      function AditionalFilters() {
+        const {
+          areaOfInterestTagsToFilter,
+          modeTagsToFilter,
+          locationTagsToFilter,
+          filters,
+          setFilters,
+        } = useContext(MainContext);
+
+        return html`
+          <div class="additional-filters">
+            <div class="mode additional-filter-box">
+              <label class="tags-title"> Modalidad</label>
+              <div class="filter-tags-wrapper">
+                ${modeTagsToFilter.map(
+                  (tag) => html`<span class="filter-tag">${tag}</span>`
+                )}
+              </div>
+            </div>
+            <div class="location additional-filter-box">
+              <label class="tags-title"> Ubicación</label>
+              <div class="filter-tags-wrapper">
+                ${locationTagsToFilter.map(
+                  (tag) => html`<span class="filter-tag">${tag}</span>`
+                )}
+              </div>
+            </div>
+            <div class="area-interes additional-filter-box">
+              <label class="tags-title"> Área de interés</label>
+              <div class="filter-tags-wrapper">
+                ${areaOfInterestTagsToFilter.map(
+                  (tag) => html`<span class="filter-tag">${tag}</span>`
+                )}
+              </div>
+            </div>
           </div>
         `;
       }
@@ -414,12 +519,21 @@
                   id="u-select"
                   onChange=${(e) => {
                     console.log("on U change: ", e, e.target.value);
-                    setFilters((state) => ({ ...state, university: e.target.value }));
+                    setFilters((state) => ({
+                      ...state,
+                      university: e.target.value,
+                    }));
                   }}
                 >
                   <option value="">Todas las universidades</option>
                   ${universityList.map(
-                    (name) => html`<option selected=${filters.university === name} value=${name}>${name}</option>`
+                    (name) =>
+                      html`<option
+                        selected=${filters.university === name}
+                        value=${name}
+                      >
+                        ${name}
+                      </option>`
                   )}
                 </select>
               </div>
@@ -501,10 +615,18 @@
         };
 
         const filteredData = filterData(data, filters);
-        console.log("applied filters: ", filteredData);
+        // console.log("applied filters: ", filteredData);
+
+        const areaOfInterestTagsToFilter = getAreaOfInterest(filteredData);
+        const modeTagsToFilter = getModeTagValues(filteredData);
+        const locationTagsToFilter = getLocationTagValues(filteredData);
+        console.log("areaOfInterestTagsToFilter: ", areaOfInterestTagsToFilter);
 
         const store = {
           data: filteredData,
+          areaOfInterestTagsToFilter,
+          modeTagsToFilter,
+          locationTagsToFilter,
           filters,
           setFilters,
           setMenuOption,
@@ -517,7 +639,10 @@
 
             <${MainContext.Provider} value=${store}>
               <main>
-                <div><${Menu} onSelect=${handleOnMenuSelect} /></div>
+                <div class="menu-wrapper">
+                  <${Menu} onSelect=${handleOnMenuSelect} />
+                  <${AditionalFilters} />
+                </div>
                 <div class="content">
                   <${ContentModule}
                     title=${menuOption === "universidades"
