@@ -14,6 +14,9 @@
     <title>Document</title>
 
     <style>
+      * {
+        box-sizing: border-box;
+      }
       body,
       h1,
       h2 {
@@ -29,13 +32,13 @@
 
       main {
         display: grid;
-        grid-template-columns: minmax(20%, 300px) 1fr;
+        grid-template-columns: minmax(auto, 180px) 1fr;
         gap: 30px;
         margin-top: 30px;
       }
       /* MENU */
       .menu {
-        background-color: blueviolet;
+        /* background-color: blueviolet; */
         width: 100%;
       }
 
@@ -52,6 +55,14 @@
         height: 35px;
         align-items: center;
         padding-left: 20px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+      }
+
+      .menu > ul li.selected {
+        background-color: #eee;
+        border-left: 2px solid black;
+        font-weight: bold;
       }
 
       /*  */
@@ -226,13 +237,22 @@
       }
 
       function Menu({ onSelect }) {
+        const { menuOption } = useContext(MainContext);
         return html`
           <div class="menu">
             <ul>
-              <li data-menu-option="universidades" onClick=${onSelect}>
+              <li
+                class=${menuOption === "universidades" ? "selected" : ""}
+                data-menu-option="universidades"
+                onClick=${onSelect}
+              >
                 UNIVERSIDADES
               </li>
-              <li data-menu-option="programas" onClick=${onSelect}>
+              <li
+                class=${menuOption === "programas" ? "selected" : ""}
+                data-menu-option="programas"
+                onClick=${onSelect}
+              >
                 PROGRAMAS
               </li>
             </ul>
@@ -302,13 +322,20 @@
 
       function MenuProgramTypeLevel() {
         const { filters, setFilters } = useContext(MainContext);
+        const handleSetFilters = (type) => {
+          setFilters((state) => ({
+            ...state,
+            program_type: !type ? null : type,
+          }));
+        };
+
         const level = filters.program_type;
         return html`
           <div>
             <ul class="menu-program-type-level">
               <li
                 class=${!level ? "selected" : ""}
-                onClick=${() => setFilters({ program_type: null })}
+                onClick=${() => handleSetFilters(null)}
               >
                 Todos
               </li>
@@ -317,23 +344,19 @@
                   ? "selected"
                   : ""}
                 onClick=${() =>
-                  setFilters({
-                    program_type: NIVEL_FORMACION.especializacion,
-                  })}
+                  handleSetFilters(NIVEL_FORMACION.especializacion)}
               >
                 Especialización
               </li>
               <li
                 class=${level === NIVEL_FORMACION.maestria ? "selected" : ""}
-                onClick=${() =>
-                  setFilters({ program_type: NIVEL_FORMACION.maestria })}
+                onClick=${() => handleSetFilters(NIVEL_FORMACION.maestria)}
               >
-                Mestría
+                Maestría
               </li>
               <li
                 class=${level === NIVEL_FORMACION.doctorado ? "selected" : ""}
-                onClick=${() =>
-                  setFilters({ program_type: NIVEL_FORMACION.doctorado })}
+                onClick=${() => handleSetFilters(NIVEL_FORMACION.doctorado)}
               >
                 Doctorado
               </li>
@@ -351,20 +374,18 @@
         const universityListGroupByProgramType =
           getUniversityListGroupByProgramType(data);
 
-        // console.log(
-        //   "university list SORTED: ",
-        //   universityListGroupByProgramType
-        // );
-
         return html`
           <div class="university-list-wrapper">
             <div>
               <${UniversityListGroupByPrograms}
                 universityListSorted=${universityListGroupByProgramType}
                 onSelect=${(filters) => {
-                  setFilters({
-                    university: filters[0],
-                    program_type: filters[1],
+                  setFilters((state) => {
+                    return {
+                      ...state,
+                      university: filters[0],
+                      program_type: filters[1],
+                    };
                   });
                   setMenuOption("programas");
                 }}
@@ -375,7 +396,7 @@
       }
 
       function ProgramList() {
-        const { data, setFilters } = useContext(MainContext);
+        const { data, filters, setFilters } = useContext(MainContext);
 
         console.log(" [PROGRAMS] ctx: ", data);
 
@@ -388,10 +409,17 @@
             <div class="programs_filters-type">
               <div class="u-selection-filter-wrapper">
                 <label for="u-select">Escoger universidad:</label>
-                <select name="universidades" id="u-select">
+                <select
+                  name="universidades"
+                  id="u-select"
+                  onChange=${(e) => {
+                    console.log("on U change: ", e, e.target.value);
+                    setFilters((state) => ({ ...state, university: e.target.value }));
+                  }}
+                >
                   <option value="">Todas las universidades</option>
                   ${universityList.map(
-                    (name) => html`<option value=${name}>${name}</option>`
+                    (name) => html`<option selected=${filters.university === name} value=${name}>${name}</option>`
                   )}
                 </select>
               </div>
@@ -480,6 +508,7 @@
           filters,
           setFilters,
           setMenuOption,
+          menuOption,
         };
         console.log("app filter state: ", filters);
         return html`
