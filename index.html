@@ -129,6 +129,25 @@
         font-weight: bold;
       }
 
+      .selectable-program {
+        cursor: pointer;
+      }
+
+      .u-selection-filter-wrapper {
+        display: flex;
+        flex-direction: column;
+        background-color: #eee;
+        height: 80px;
+        justify-content: center;
+        padding: 5px;
+      }
+
+      .u-selection-filter-wrapper > select {
+        height: 30px;
+        width: 50%;
+        margin-top: 5px;
+      }
+
       .menu-program-type-level {
         display: flex;
         justify-content: center;
@@ -194,6 +213,32 @@
         font-size: 14px;
         cursor: pointer;
       }
+      .program-page-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background-color: #9e9e9e0f;
+        border-radius: 3px;
+        padding: 10px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+        padding: 5px;
+        border-radius: 3px;
+        margin: 10px;
+        background-color: white;
+      }
+
+      .field > label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 14px;
+        color: #111e64;
+      }
+      .field > span {
+        padding-left: 10px;
+      }
     </style>
   </head>
   <body>
@@ -208,6 +253,69 @@
         createContext,
         useContext,
       } from "https://unpkg.com/htm/preact/standalone.module.js";
+
+      const TABLE_STRUCT = {
+        NOMBRE_INSTITUCIÓN: {
+          display: true,
+          name: "Nombre Institución",
+        },
+        NOMBRE_DEL_PROGRAMA: {
+          display: true,
+          name: "Nombre del programa",
+        },
+        TITULO_OTORGADO: {
+          display: true,
+          name: "Titulo otorgado",
+        },
+        CÓDIGO_SNIES_DEL_PROGRAMA: {
+          display: true,
+          name: "Código SNIES",
+        },
+        NIVEL_DE_FORMACIÓN: {
+          display: true,
+          name: "Nivel de formación",
+        },
+        MODALIDAD: {
+          display: true,
+          name: "Modalidad",
+        },
+        NÚMERO_PERIODOS_DE_DURACIÓN: {
+          display: true,
+          name: "Número de periodos de duración",
+        },
+        NÚMERO_CRÉDITOS: {
+          display: true,
+          name: "Número de créditos",
+        },
+        PERIODICIDAD: {
+          display: true,
+          name: "Periocidad",
+        },
+        MUNICIPIO_OFERTA_PROGRAMA: {
+          display: true,
+          name: "Ubicación",
+        },
+        COSTO_MATRÍCULA_ESTUD_NUEVOS: {
+          display: false,
+          name: "Costo matricula",
+        },
+        HORARIOS: {
+          display: true,
+          name: "Horarios",
+        },
+        COSTO_MATRICULA_ACTUAL: {
+          display: true,
+          name: "Costo matrícula",
+        },
+        URL: {
+          display: false,
+          name: "URL",
+        },
+        DESCRIPCION_PROGRAMA: {
+          display: true,
+          name: "Descripción programa",
+        },
+      };
 
       const MainContext = createContext({});
 
@@ -224,6 +332,7 @@
         interest_area: null,
         modalidad: null,
         location: null,
+        program_id: null,
       };
 
       function useFetchData() {
@@ -328,18 +437,18 @@
           <div class="menu">
             <ul>
               <li
-                class=${menuOption === "universidades" ? "selected" : ""}
-                data-menu-option="universidades"
-                onClick=${onSelect}
-              >
-                UNIVERSIDADES
-              </li>
-              <li
                 class=${menuOption === "programas" ? "selected" : ""}
                 data-menu-option="programas"
                 onClick=${onSelect}
               >
                 PROGRAMAS
+              </li>
+              <li
+                class=${menuOption === "universidades" ? "selected" : ""}
+                data-menu-option="universidades"
+                onClick=${onSelect}
+              >
+                UNIVERSIDADES
               </li>
             </ul>
           </div>
@@ -409,7 +518,6 @@
       function ContentModule({ children, title }) {
         return html`
           <div class="content-module">
-            <h2>${title}</h2>
             <div class="module-content">${children}</div>
           </div>
         `;
@@ -596,14 +704,23 @@
                 </tr>
               </thead>
               <tbody>
-                ${data.map((programa) => {
+                ${data.map((program) => {
                   return html`
                     <tr>
-                      <td>${programa["NOMBRE_DEL_PROGRAMA"]}</td>
-                      <td>${programa["NOMBRE_INSTITUCIÓN"]}</td>
-                      <td>${programa["NIVEL_DE_FORMACIÓN"]}</td>
-                      <td>${programa["MUNICIPIO_OFERTA_PROGRAMA"]}</td>
-                      <td>${programa["MODALIDAD"]}</td>
+                      <td
+                        class="selectable-program"
+                        onClick=${() =>
+                          setFilters((state) => ({
+                            ...state,
+                            program_id: program["CÓDIGO_SNIES_DEL_PROGRAMA"],
+                          }))}
+                      >
+                        ${program["NOMBRE_DEL_PROGRAMA"]}
+                      </td>
+                      <td>${program["NOMBRE_INSTITUCIÓN"]}</td>
+                      <td>${program["NIVEL_DE_FORMACIÓN"]}</td>
+                      <td>${program["MUNICIPIO_OFERTA_PROGRAMA"]}</td>
+                      <td>${program["MODALIDAD"]}</td>
                     </tr>
                   `;
                 })}
@@ -615,18 +732,50 @@
         `;
       }
 
+      function ProgramPage() {
+        const { data, filters, setFilters } = useContext(MainContext);
+        const program = data.find(
+          (program) =>
+            program["CÓDIGO_SNIES_DEL_PROGRAMA"] === filters.program_id
+        );
+        const visibleFields = Object.keys(TABLE_STRUCT).filter(
+          (key) => TABLE_STRUCT[key].display
+        );
+        // console.log("[program page] : ", program, typeof program);
+        return html`
+          <div class="program-page-wrapper">
+            ${visibleFields.map((key) => {
+              return html`
+                <div class="field">
+                  <label>${TABLE_STRUCT[key].name}</label>
+                  <span>${program[key]}</span>
+                </div>
+              `;
+            })}
+            <div class="field">
+              <label>URL</label>
+              <a
+                href=${program["URL"]}
+                target="_blank"
+                rel="noreferrer"
+                rel="noopener"
+                >Visita el sitio de este programa
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
       function App() {
         const data = useFetchData();
-        const [menuOption, setMenuOption] = useState("universidades");
+        const [menuOption, setMenuOption] = useState("programas");
         const [filters, setFilters] = useState({ ...initialFiltersState });
 
         const handleOnMenuSelect = (e) => {
           const { menuOption } = e?.currentTarget?.dataset ?? {};
           if (menuOption) {
             setMenuOption(menuOption);
-            if (menuOption === "universidades") {
-              setFilters({ ...initialFiltersState });
-            }
+            setFilters({ ...initialFiltersState });
           }
         };
 
@@ -640,6 +789,8 @@
           modalidad: (program, query) => program["MODALIDAD"] === query,
           location: (program, query) =>
             program["MUNICIPIO_OFERTA_PROGRAMA"] === query,
+          program_id: (program, query) =>
+            program["CÓDIGO_SNIES_DEL_PROGRAMA"] === query,
         };
 
         const filterData = (data, filters) => {
@@ -674,6 +825,14 @@
           menuOption,
         };
         console.log("app filter state: ", filters);
+
+        const renderComponent = () => {
+          if (filters.program_id) {
+            return ProgramPage;
+          }
+          return menuOption === "universidades" ? UniversityList : ProgramList;
+        };
+
         return html`
           <div class="main-wrapper">
             <${Header} />
@@ -690,9 +849,7 @@
                       ? "UNIVERSIDADES"
                       : "PROGRAMAS"}
                   >
-                    <${menuOption === "universidades"
-                      ? UniversityList
-                      : ProgramList} />
+                    <${renderComponent()} />
                   <//>
                 </div>
               </main>
